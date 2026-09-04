@@ -191,36 +191,34 @@ class CedarlingPolicyDispatcher:
 
     def _verdict(self, result: AuthorizeResult) -> Mapping[str, Any]:
         allowed = bool(result.is_allowed())
-        if allowed:
-            verdict: dict[str, Any] = {"decision": "allow", "reason": _REASON_ALLOW}
-        else:
-            verdict = {
-                "decision": "deny",
-                "reason": self._deny_reason(result),
-            }
-            diag = _diagnostic_message(result)
-            if diag:
-                verdict["message"] = diag
+        fallback = _REASON_ALLOW if allowed else _REASON_DENY
+        verdict: dict[str, Any] = {
+            "decision": "allow" if allowed else "deny",
+            "reason": self._policy_reason(result, fallback),
+        }
+        message = _diagnostic_message(result)
+        if message:
+            verdict["message"] = message
 
         evidence = self._evidence()
         if evidence:
             verdict["evidence"] = evidence
         return verdict
 
-    def _deny_reason(self, result: AuthorizeResult) -> str:
-        """First contributing Cedar policy id, mirroring spec 12.4, else a code.
+    def _policy_reason(self, result: AuthorizeResult, fallback: str) -> str:
+        """First contributing Cedar policy id (spec 12.4 diagnostics), else a code.
 
-        ``diagnostics.reason`` is an unordered ``set[str]``, so sort before
-        picking to keep the verdict deterministic across runs.
+        The fallback is used only when no policy contributed, which is a
+        default deny.``diagnostics.reason`` is an unordered ``set[str]``, so
+        sort before picking to keep the verdict deterministic across runs.
         """
         try:
-            reasons = sorted(_response(result).diagnostics.reason)
-            for code in reasons:
+            for code in sorted(_response(result).diagnostics.reason):
                 if code and not code.startswith("runtime_error:"):
                     return str(code)
         except Exception:
-            logger.debug("no Cedarling diagnostics on deny", exc_info=True)
-        return _REASON_DENY
+            logger.debug("no Cedarling diagnostics available", exc_info=True)
+        return fallback
 
     def _evidence(self) -> Optional[dict[str, Any]]:
         pointers: dict[str, str] = {}

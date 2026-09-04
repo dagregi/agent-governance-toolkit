@@ -41,18 +41,18 @@ Expected output of `unsigned_example.py`:
 
 ```
 [ALLOW] agent-analyst (role=admin) → pre_tool_call on read_data
-         decision: allow  reason: cedarling_allow
+         decision: allow  reason: allow-admin-tools
 [DENY ] agent-guest (role=guest) → pre_tool_call on read_data
          decision: deny  reason: cedarling_deny
 [ALLOW] agent-writer (role=admin) → pre_tool_call on delete_file
-         decision: allow  reason: cedarling_allow
+         decision: allow  reason: allow-admin-tools
 [DENY ] agent-auditor (role=auditor) → pre_tool_call on delete_file
          decision: deny  reason: forbid-auditor-delete
 ```
 
-An explicit `permit`, a default denial, another `permit`, and an explicit
-`forbid` whose reason is the matched policy id. Policies in
-[`policy-stores/unsigned/`](policy-stores/unsigned):
+The `reason` names the deciding Cedar policy id. Two permits, a default
+denial (no policy applied, so the generic `cedarling_deny` code), and an
+explicit forbid. Policies in [`policy-stores/unsigned/`](policy-stores/unsigned):
 
 ```
 allow-admin-tools     : permit pre_tool_call on any Tool when principal.role == "admin"
@@ -79,23 +79,28 @@ Expected output of `multi_issuer_example.py`:
 
 ```
 [ALLOW] admin agent on managed laptop writes config → pre_tool_call on write_config (device=laptop)
-         decision: allow  reason: cedarling_allow
+         decision: allow  reason: allow-admin-write
 [DENY ] admin agent on personal mobile writes config → pre_tool_call on write_config (device=mobile)
          decision: deny  reason: cedarling_deny
 [ALLOW] admin agent on personal mobile reads config → pre_tool_call on read_config (device=mobile)
-         decision: allow  reason: cedarling_allow
+         decision: allow  reason: allow-admin-read
 [DENY ] operator agent on managed laptop writes config → pre_tool_call on write_config (device=laptop)
          decision: deny  reason: cedarling_deny
+[DENY ] admin agent deletes production (hard-blocked) → pre_tool_call on delete_prod (device=laptop)
+         decision: deny  reason: forbid-prod-delete
 ```
 
 The first two requests carry the *same admin token* and differ only in the
 device context, so the weaker device drops the write capability. The fourth shows
-the role gate: an operator token never writes. Policies in
+the role gate: an operator token never writes. The fifth is an explicit forbid:
+some tools are hard-blocked even for an admin token, and its reason names the
+policy. Policies in
 [`policy-stores/multi-issuer/`](policy-stores/multi-issuer):
 
 ```
-allow-admin-read  : permit pre_tool_call on Tool::"read_config" when token role == "admin"
-allow-admin-write : permit pre_tool_call on Tool::"write_config" when token role == "admin" AND device != "mobile"
+allow-admin-read   : permit pre_tool_call on Tool::"read_config" when token role == "admin"
+allow-admin-write  : permit pre_tool_call on Tool::"write_config" when token role == "admin" AND device != "mobile"
+forbid-prod-delete : forbid pre_tool_call on Tool::"delete_prod" for any principal (hard block)
 ```
 
 > The demo forges its own JWTs and runs with signature/status validation
@@ -187,7 +192,8 @@ policy-stores/
     │   └── janssen.json             # the IdP whose tokens are trusted
     └── policies/
         ├── allow-admin-read.cedar
-        └── allow-admin-write.cedar
+        ├── allow-admin-write.cedar
+        └── forbid-prod-delete.cedar
 ```
 
 Edit the `.cedar` files and re-run the examples to see decisions change.

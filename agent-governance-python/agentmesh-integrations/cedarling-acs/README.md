@@ -171,14 +171,18 @@ The dispatcher receives the ACS final policy input under `invocation["input"]`
 
 | Cedarling outcome | Verdict |
 |---|---|
-| permit | `{"decision": "allow", "reason": "cedarling_allow"}` |
-| forbid | `{"decision": "deny", "reason": "<first contributing policy id>"}` |
+| permit | `{"decision": "allow", "reason": "<permitting policy id>"}` |
+| forbid | `{"decision": "deny", "reason": "<forbidding policy id>"}` |
 | default deny (no policy applied) | `{"decision": "deny", "reason": "cedarling_deny"}` |
 | `AuthorizeError` | `{"decision": "deny", "reason": "cedarling_authorization_error"}` |
 | missing input, missing `cedarling-python`, other error | `{"decision": "deny", ...}` |
 
-Every failure path denies. Reasons never use the reserved `runtime_error:`
-prefix, which belongs to the runtime.
+The `reason` is the first contributing Cedar policy id from the decision
+diagnostics, sorted for determinism, so it names the actual policy for both
+permit and forbid. The generic `cedarling_allow` / `cedarling_deny` codes appear
+only when no policy contributed (a default deny). The full contributing list is
+in `message`. Every failure path denies, and reasons never use the reserved
+`runtime_error:` prefix, which belongs to the runtime.
 
 ## Migration from the v4 backend
 

@@ -144,6 +144,7 @@ def _input_pi(*, role: str, source: str | None) -> dict:
 def test_admin_tool_call_allowed(unsigned):
     verdict = unsigned.evaluate(_inv(_tool_pi(role="admin", tool="read_data")))
     assert verdict["decision"] == "allow"
+    assert verdict["reason"] == "allow-admin-tool"
     assert not verdict.get("transform")
 
 
@@ -312,6 +313,7 @@ def test_multi_issuer_admin_on_laptop_allowed(multi):
         _inv(_multi_pi(tool="write_config", device="laptop", token=_mint("ops", "admin")))
     )
     assert verdict["decision"] == "allow"
+    assert verdict["reason"] == "allow-admin-write"
 
 
 def test_multi_issuer_forbid_surfaces_policy_id(multi):

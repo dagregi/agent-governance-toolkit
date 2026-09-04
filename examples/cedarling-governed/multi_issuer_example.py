@@ -197,6 +197,12 @@ test_cases = [
         "device": "laptop",
         "token": OPERATOR_TOKEN,
     },
+    {
+        "label": "admin agent deletes production (hard-blocked)",
+        "tool": "delete_prod",
+        "device": "laptop",
+        "token": ADMIN_TOKEN,
+    },
 ]
 
 print(f"Policy store : {POLICY_STORE}")
