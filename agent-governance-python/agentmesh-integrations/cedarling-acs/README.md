@@ -184,6 +184,21 @@ only when no policy contributed (a default deny). The full contributing list is
 in `message`. Every failure path denies, and reasons never use the reserved
 `runtime_error:` prefix, which belongs to the runtime.
 
+## Learning Cedarling
+
+This package only ships the dispatcher; policy authoring and store publishing
+happen on the Cedarling side and are covered upstream:
+
+- **Agama Lab** — author Cedar policies and manage/publish policy stores in a
+  GitHub repository with the Policy Designer. Introduction:
+  <https://help.gluu.org/kb/article/25/introduction-to-agama-lab>
+- **Janssen docs (Cedarling)** — reference documentation for Cedarling, its
+  bootstrap properties, and multi-issuer support:
+  <https://docs.jans.io/stable/cedarling>
+- **Policy store reference** — Cedarling policy store formats (single-file,
+  directory-based, and `.cjar` archives), trusted issuers, and default
+  entities: <https://docs.jans.io/head/cedarling/reference/cedarling-policy-store/>
+
 ## Migration from the v4 backend
 
 The removed `cedarling-agentmesh` backend implemented the v4
