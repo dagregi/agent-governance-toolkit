@@ -29,5 +29,10 @@ type Context = {
   tokens: {
     janssen_access_token?: AGT::Access_Token,
     total_token_count: Long
+  },
+  tool_call?: {
+    name: String,
+    args: {},
+    id?: String
   }
 };

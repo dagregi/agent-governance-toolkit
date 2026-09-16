@@ -8,8 +8,8 @@ against a local policy store.
 The `CedarlingPolicyDispatcher` implements the
 `agent_control_specification.PolicyDispatcher` protocol. The runtime hands it the
 final policy input at each intervention point; it returns an ACS verdict. Passing
-no dispatcher keeps the bundled `cedar` dispatcher; passing this one adds signed
-stores, JWT/token principal resolution, and multi-issuer auth on top.
+no dispatcher keeps the bundled `cedar` dispatcher; passing this one adds
+JWT/token principal resolution and multi-issuer auth on top.
 
 Two examples, one per authorization mode:
 

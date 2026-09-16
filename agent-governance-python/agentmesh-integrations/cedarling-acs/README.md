@@ -86,14 +86,14 @@ Already have an engine? Construct directly: `CedarlingPolicyDispatcher(engine, c
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `auth_type` | `"unsigned"` | `"unsigned"` uses a principal built from the snapshot; `"multi-issuer"` uses JWTs |
+| `auth_type` | `"unsigned"` | `"unsigned"` uses a principal built from the snapshot; `"multi-issuer"` uses JWTs. Any other value raises `ValueError` |
 | `namespace` | `None` | Cedar namespace prepended to entity types (for example `"AGT"` gives `AGT::Agent`) |
 | `principal_attributes_path` | `("envelope", "agent", "attributes")` | Snapshot path to the principal attribute map (unsigned only) |
 | `principal_entity_type` | `"Agent"` | Cedar entity type for the principal |
 | `resource_entity_type` | `"PolicyTarget"` | Cedar entity type at non-tool intervention points |
 | `tool_entity_type` | `"Tool"` | Cedar entity type at tool intervention points |
 | `action_namespace` | `"Action"` | Cedar namespace for actions (gives `Action::"<intervention_point>"`) |
-| `token_paths` | `(("tokens",), ("envelope", "agent", "tokens"))` | Snapshot paths searched for the multi-issuer token map; first hit wins |
+| `token_paths` | `(("envelope", "agent", "tokens"),)` | Snapshot paths searched for the multi-issuer token map; first hit wins |
 | `policy_store_pointer` | `None` | Optional URL recorded in the verdict `evidence.verification_pointers.policy_store` |
 
 ## Auth types
@@ -176,6 +176,7 @@ The dispatcher receives the ACS final policy input under `invocation["input"]`
 | default deny (no policy applied) | `{"decision": "deny", "reason": "cedarling_deny"}` |
 | `AuthorizeError` | `{"decision": "deny", "reason": "cedarling_authorization_error"}` |
 | missing input, missing `cedarling-python`, other error | `{"decision": "deny", ...}` |
+| missing `snapshot.envelope.agent.id` (unsigned) | `{"decision": "deny", "reason": "cedarling_invocation_malformed"}` |
 
 The `reason` is the first contributing Cedar policy id from the decision
 diagnostics, sorted for determinism, so it names the actual policy for both

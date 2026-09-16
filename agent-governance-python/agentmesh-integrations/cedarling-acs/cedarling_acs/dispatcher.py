@@ -46,6 +46,9 @@ _REASON_ENGINE_ERROR = "cedarling_engine_error"
 _REASON_DENY = "cedarling_deny"
 _REASON_ALLOW = "cedarling_allow"
 
+# Entity shaping key reserved to the dispatcher when building principal entities.
+_RESERVED_ENTITY_KEY = "cedar_entity_mapping"
+
 
 @dataclass
 class CedarlingConfig:
@@ -58,7 +61,8 @@ class CedarlingConfig:
     - action ``Action::"<intervention_point>"``
     - resource ``Tool::"<tool name>"`` at tool points, else
       ``PolicyTarget::"<policy_target.kind>"``
-    - context: the snapshot minus ``envelope``, plus each annotation keyed as
+    - context: the snapshot minus ``envelope`` and any snapshot key that
+      begins a configured ``token_paths`` entry, plus each annotation keyed as
       ``annotations.<name>``
     """
 
@@ -72,11 +76,17 @@ class CedarlingConfig:
     # Snapshot path (sequence of keys) to the per-request token map for
     # multi-issuer auth. First hit wins.
     token_paths: tuple[tuple[str, ...], ...] = (
-        ("tokens",),
         ("envelope", "agent", "tokens"),
     )
     # Emit a verification pointer to the policy store in the verdict evidence.
     policy_store_pointer: Optional[str] = None
+
+    def __post_init__(self) -> None:
+        valid: tuple[str, ...] = ("unsigned", "multi-issuer")
+        if self.auth_type not in valid:
+            raise ValueError(
+                f"auth_type must be one of {valid!r}, got {self.auth_type!r}"
+            )
 
 
 class CedarlingPolicyDispatcher:
@@ -168,15 +178,27 @@ class CedarlingPolicyDispatcher:
             )
             result = self._engine.authorize_multi_issuer(request)
         else:
-            principal_id = str(_dig(snapshot, ("envelope", "agent", "id")) or "anonymous")
+            raw_id = _dig(snapshot, ("envelope", "agent", "id"))
+            principal_id = "" if raw_id is None else str(raw_id)
+            if not principal_id.strip():
+                return _deny(
+                    _REASON_MALFORMED,
+                    "snapshot.envelope.agent.id is required for unsigned auth",
+                )
             principal_attrs = _as_dict(_dig(snapshot, cfg.principal_attributes_path))
+            if _RESERVED_ENTITY_KEY in principal_attrs:
+                return _deny(
+                    _REASON_MALFORMED,
+                    f"principal attributes may not set reserved key "
+                    f"'{_RESERVED_ENTITY_KEY}'",
+                )
             principal = cedarling_python.EntityData.from_dict(
                 {
+                    **principal_attrs,
                     "cedar_entity_mapping": {
                         "entity_type": self._ns(cfg.principal_entity_type),
                         "id": principal_id,
                     },
-                    **principal_attrs,
                 }
             )
             request = cedarling_python.RequestUnsigned(
@@ -190,7 +212,7 @@ class CedarlingPolicyDispatcher:
         return self._verdict(result)
 
     def _verdict(self, result: AuthorizeResult) -> Mapping[str, Any]:
-        allowed = bool(result.is_allowed())
+        allowed = result.is_allowed() is True
         fallback = _REASON_ALLOW if allowed else _REASON_DENY
         verdict: dict[str, Any] = {
             "decision": "allow" if allowed else "deny",
@@ -243,7 +265,9 @@ class CedarlingPolicyDispatcher:
     def _context(
         self, snapshot: Mapping[str, Any], annotations: Mapping[str, Any]
     ) -> dict[str, Any]:
-        ctx = {k: v for k, v in snapshot.items() if k != "envelope"}
+        reserved: set[str] = {"envelope"}
+        reserved.update(p[0] for p in self._config.token_paths if p)
+        ctx = {k: v for k, v in snapshot.items() if k not in reserved}
         for name, value in annotations.items():
             ctx[f"annotations.{name}"] = value
         return ctx
