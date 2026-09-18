@@ -1028,10 +1028,12 @@ AEDT
 anthonyonazure
 Bigspin
 Clendenen
+cjar
 Ecommerce
 externalidentity
 fnmatchcase
 Janssen
+jans
 KillSwitch
 langgenius
 MCPGateway
