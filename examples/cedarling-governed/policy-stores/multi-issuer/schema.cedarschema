@@ -32,7 +32,7 @@ type Context = {
   },
   tool_call?: {
     name: String,
-    args: {},
+    args?: {},
     id?: String
   }
 };

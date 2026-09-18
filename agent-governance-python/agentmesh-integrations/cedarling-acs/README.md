@@ -165,7 +165,7 @@ The dispatcher receives the ACS final policy input under `invocation["input"]`
 | `intervention_point` | `action` (`AGT::Action::"pre_tool_call"`) |
 | `tool.name` | `resource` id (`AGT::Tool`) at tool points |
 | `policy_target.kind` | `resource` id (`AGT::PolicyTarget`) at non-tool points |
-| `snapshot` minus `envelope`, plus each annotation | Cedar `context` |
+| `snapshot` minus `envelope`, plus each annotation; `tool_call` projects as `{name, id?}` (its `args` are already the policy target) | Cedar `context` |
 
 ## Verdicts
 

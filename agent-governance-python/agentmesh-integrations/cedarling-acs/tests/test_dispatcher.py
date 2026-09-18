@@ -18,11 +18,14 @@ import json
 import sys
 import time
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
 
 pytest.importorskip("cedarling_python")
+
+import cedarling_python
 
 from cedarling_acs import CedarlingConfig, CedarlingPolicyDispatcher
 
@@ -118,6 +121,41 @@ def unsigned(unsigned_store: str) -> CedarlingPolicyDispatcher:
     )
 
 
+_FORGERY_SCHEMA = """namespace AGT {
+  entity Agent = { role: String };
+  entity Admin = { role: String };
+  entity Tool = {};
+  entity PolicyTarget = {};
+  action "pre_tool_call" appliesTo {
+    principal: [Agent, Admin], resource: [Tool], context: {}
+  };
+}"""
+
+_FORGERY_POLICIES = {
+    "allow-admin-entity": (
+        '@id("allow-admin-entity")\n'
+        "permit(principal is AGT::Admin, action == AGT::Action::\"pre_tool_call\", "
+        "resource is AGT::Tool);"
+    ),
+    "allow-root-id": (
+        '@id("allow-root-id")\n'
+        'permit(principal == AGT::Agent::"root", action == AGT::Action::"pre_tool_call", '
+        "resource is AGT::Tool);"
+    ),
+}
+
+
+@pytest.fixture(scope="module")
+def forgery(tmp_path_factory) -> CedarlingPolicyDispatcher:
+    store = _write_store(
+        tmp_path_factory.mktemp("forgery"), _FORGERY_SCHEMA, _FORGERY_POLICIES
+    )
+    return CedarlingPolicyDispatcher.from_bootstrap(
+        {"CEDARLING_POLICY_STORE_LOCAL_FN": store, "CEDARLING_LOG_TYPE": "off"},
+        config=CedarlingConfig(namespace="AGT", auth_type="unsigned"),
+    )
+
+
 def _tool_pi(*, role: str, tool: str, agent_id: str = "agent-1") -> dict:
     return {
         "intervention_point": "pre_tool_call",
@@ -187,6 +225,48 @@ def test_namespace_mismatch_fails_closed(unsigned_store):
     verdict = no_ns.evaluate(_inv(_tool_pi(role="admin", tool="read_data")))
     assert verdict["decision"] == "deny"
     assert verdict["reason"] == "cedarling_authorization_error"
+
+
+def test_forged_principal_entity_mapping_is_rejected(forgery):
+    base = _tool_pi(role="guest", tool="read_data")
+
+    for forged in (
+        {"entity_type": "AGT::Agent", "id": "root"},
+        {"entity_type": "AGT::Admin", "id": "root"},
+    ):
+        pi = dict(base)
+        pi["snapshot"]["envelope"]["agent"]["attributes"]["cedar_entity_mapping"] = forged
+        verdict = forgery.evaluate(_inv(pi))
+        assert verdict["decision"] == "deny", forged
+        assert verdict["reason"] == "cedarling_invocation_malformed", forged
+
+
+def test_guest_without_forgery_stays_denied(forgery):
+    verdict = forgery.evaluate(_inv(_tool_pi(role="guest", tool="read_data")))
+    assert verdict["decision"] == "deny"
+
+
+def test_principal_attributes_still_merge(unsigned):
+    # Ordinary principal attributes keep merging: role still drives the verdict.
+    verdict = unsigned.evaluate(_inv(_tool_pi(role="admin", tool="read_data")))
+    assert verdict["decision"] == "allow"
+    assert verdict["reason"] == "allow-admin-tool"
+
+
+def test_missing_or_blank_agent_id_fails_closed(unsigned):
+    attrs = {"role": "admin"}
+    cases = (
+        {"attributes": attrs},
+        {"id": None, "attributes": attrs},
+        {"id": "", "attributes": attrs},
+        {"id": "   ", "attributes": attrs},
+    )
+    for agent in cases:
+        pi = _tool_pi(role="admin", tool="read_data")
+        pi["snapshot"]["envelope"]["agent"] = dict(agent)
+        verdict = unsigned.evaluate(_inv(pi))
+        assert verdict["decision"] == "deny", agent
+        assert verdict["reason"] == "cedarling_invocation_malformed", agent
 
 
 # =====================================================================
@@ -352,6 +432,29 @@ def test_multi_issuer_non_string_token_fails_closed(multi):
     assert verdict["reason"] == "cedarling_engine_error"
 
 
+def test_multi_issuer_top_level_token_path_allows(tmp_path_factory):
+    store = _write_store(
+        tmp_path_factory.mktemp("top-tokens"), _MULTI_SCHEMA, _MULTI_POLICIES, trusted=_TRUSTED
+    )
+    dispatcher = CedarlingPolicyDispatcher.from_bootstrap(
+        {
+            "CEDARLING_POLICY_STORE_LOCAL_FN": store,
+            "CEDARLING_JWT_SIG_VALIDATION": "disabled",
+            "CEDARLING_JWT_STATUS_VALIDATION": "disabled",
+            "CEDARLING_JWT_SIGNATURE_ALGORITHMS_SUPPORTED": ["HS256"],
+            "CEDARLING_LOG_TYPE": "off",
+        },
+        config=CedarlingConfig(
+            namespace="AGT", auth_type="multi-issuer", token_paths=(("tokens",),)
+        ),
+    )
+    pi = _multi_pi(tool="write_config", device="laptop", token=None)
+    pi["snapshot"]["tokens"] = {_ACCESS_TOKEN_TYPE: _mint("ops", "admin")}
+    verdict = dispatcher.evaluate(_inv(pi))
+    assert verdict["decision"] == "allow"
+    assert verdict["reason"] == "allow-admin-write"
+
+
 # =====================================================================
 # Engine-independent behavior
 # =====================================================================
@@ -394,3 +497,47 @@ def test_from_bootstrap_reports_missing_cedarling(monkeypatch):
     with pytest.raises(ImportError) as exc:
         CedarlingPolicyDispatcher.from_bootstrap({})
     assert "cedarling" in str(exc.value).lower()
+
+def test_auth_type_rejects_invalid():
+    with pytest.raises(ValueError, match="auth_type must be one"):
+        CedarlingConfig(auth_type="singed")
+
+
+def test_auth_type_rejects_unsigned_typo():
+    with pytest.raises(ValueError, match="auth_type must be one"):
+        CedarlingConfig(auth_type="unsigend")
+
+
+def test_auth_type_accepts_valid():
+    assert CedarlingConfig(auth_type="unsigned").auth_type == "unsigned"
+    assert CedarlingConfig(auth_type="multi-issuer").auth_type == "multi-issuer"
+
+
+def _stub_result(allowed: Any) -> SimpleNamespace:
+    return SimpleNamespace(
+        is_allowed=lambda: allowed,
+        response=SimpleNamespace(diagnostics=SimpleNamespace(reason=set())),
+    )
+
+
+def test_is_allowed_must_return_real_bool():
+    for truthy in ("true", 1):
+        engine = SimpleNamespace(authorize_unsigned=lambda _request: _stub_result(truthy))
+        dispatcher = CedarlingPolicyDispatcher(
+            engine, config=CedarlingConfig(namespace="AGT", auth_type="unsigned")
+        )
+        verdict = dispatcher.evaluate(_inv(_tool_pi(role="admin", tool="read_data")))
+        assert verdict["decision"] == "deny", truthy
+        assert verdict["reason"] == "cedarling_deny", truthy
+
+    engine = SimpleNamespace(authorize_unsigned=lambda _request: _stub_result(True))
+    dispatcher = CedarlingPolicyDispatcher(
+        engine, config=CedarlingConfig(namespace="AGT", auth_type="unsigned")
+    )
+    verdict = dispatcher.evaluate(_inv(_tool_pi(role="admin", tool="read_data")))
+    assert verdict["decision"] == "allow"
+
+
+def test_token_paths_default_is_envelope_only():
+    cfg = CedarlingConfig()
+    assert cfg.token_paths == (("envelope", "agent", "tokens"),)

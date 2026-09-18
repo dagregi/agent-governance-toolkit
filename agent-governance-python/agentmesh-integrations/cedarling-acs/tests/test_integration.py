@@ -13,6 +13,9 @@ from pathlib import Path
 import pytest
 
 pytest.importorskip("cedarling_python")
+pytest.importorskip("agent_control_specification")
+
+from agent_control_specification import AgentControl, Decision  # noqa: E402
 
 from cedarling_acs import CedarlingConfig, CedarlingPolicyDispatcher  # noqa: E402
 
@@ -24,6 +27,8 @@ _STORE = (
     / "policy-stores"
     / "unsigned"
 )
+
+_MANIFEST = _STORE.parents[1] / "manifest.yaml"
 
 
 @pytest.fixture(scope="module")
@@ -63,3 +68,17 @@ def test_auditor_explicit_forbid_carries_policy_id(dispatcher):
     verdict = dispatcher.evaluate(_pi("agent-auditor", "auditor", "delete_file"))
     assert verdict["decision"] == "deny"
     assert verdict["reason"] == "forbid-auditor-delete"
+
+
+@pytest.mark.asyncio
+async def test_admin_run_tool_with_args_allows(dispatcher):
+    if not _MANIFEST.is_file():
+        pytest.skip(f"manifest not found at {_MANIFEST}")
+    control = AgentControl.from_path(str(_MANIFEST), policy_dispatcher=dispatcher)
+    result = await control.run_tool(
+        "read_config",
+        {"key": "a"},
+        lambda args: {"ok": True},
+        snapshot={"envelope": {"agent": {"id": "agent-admin", "attributes": {"role": "admin"}}}},
+    )
+    assert result.pre_tool_call_result.verdict.decision is Decision.ALLOW

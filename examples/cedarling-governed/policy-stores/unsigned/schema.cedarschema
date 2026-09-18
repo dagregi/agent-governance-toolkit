@@ -20,7 +20,7 @@ namespace AGT {
 	  context: {
 	    tool_call?: {
 	      name: String,
-	      args: {},
+	      args?: {},
 	      id?: String
 	    }
 	  }

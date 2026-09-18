@@ -62,8 +62,9 @@ class CedarlingConfig:
     - resource ``Tool::"<tool name>"`` at tool points, else
       ``PolicyTarget::"<policy_target.kind>"``
     - context: the snapshot minus ``envelope`` and any snapshot key that
-      begins a configured ``token_paths`` entry, plus each annotation keyed as
-      ``annotations.<name>``
+      begins a configured ``token_paths`` entry, with a ``tool_call`` binding
+      projected as ``{name, id?}`` (its ``args`` are already the policy target
+      value), plus each annotation keyed as ``annotations.<name>``
     """
 
     auth_type: AuthType = "unsigned"
@@ -268,6 +269,14 @@ class CedarlingPolicyDispatcher:
         reserved: set[str] = {"envelope"}
         reserved.update(p[0] for p in self._config.token_paths if p)
         ctx = {k: v for k, v in snapshot.items() if k not in reserved}
+        tool_call = ctx.get("tool_call")
+        if isinstance(tool_call, Mapping):
+            # Project only {name, id?}: the tool arguments are already the
+            # policy_target value, and passing them through untyped would fail
+            # closed against closed-record `args` declarations in Cedar schemas.
+            ctx["tool_call"] = {
+                key: tool_call[key] for key in ("name", "id") if key in tool_call
+            }
         for name, value in annotations.items():
             ctx[f"annotations.{name}"] = value
         return ctx

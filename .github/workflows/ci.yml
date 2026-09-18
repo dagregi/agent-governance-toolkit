@@ -783,6 +783,8 @@ jobs:
             import-module: openai_agents_trust
           - package: pydantic-ai-governance
             import-module: pydantic_ai_governance
+          - package: cedarling-acs
+            import-module: cedarling_acs
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
