@@ -43,7 +43,7 @@ AgentMesh core is a lean, zero-external-dependency library. Platform integration
 | [LangChain](langchain-agentmesh/) | `agentmesh-langchain` | ✅ Stable | Ed25519 identity, trust-gated tools, scope chains, callbacks |
 | [LangGraph](langgraph-trust/) | [`langgraph-trust`](https://pypi.org/project/langgraph-trust/) | ✅ Published (PyPI) | Trust-gated checkpoint nodes, governance policy enforcement, trust-aware routing |
 | [LlamaIndex](llamaindex-agentmesh/) | `llama-index-agent-agentmesh` | ✅ Merged Upstream | Trust-verified workers, identity-aware query engines, scope chains |
-| [Agent Lightning](https://github.com/microsoft/agent-governance-python/agent-lightning/tree/main/contrib/recipes/agentos) | — | ✅ Merged Upstream | Agent-OS governance adapters, reward shaping, governed RL training — maintained in [microsoft/agent-lightning](https://github.com/microsoft/agent-lightning) |
+| [Agent Lightning](../agent-lightning/) | — | ✅ Merged Upstream | Agent-OS governance adapters, reward shaping, governed RL training — maintained in [microsoft/agent-lightning](https://github.com/microsoft/agent-lightning) |
 | [Dify Plugin](dify-plugin/) | `agentmesh-trust-layer` | ✅ Stable | Packaged `.difypkg` with peer verification, step auth, trust scoring |
 | [Dify Middleware](dify/) | — | 📦 Archived | Flask middleware (archived — use the plugin instead) |
 | [Moltbook](moltbook/) | — | ✅ Stable | AgentMesh governance skill for [Moltbook](https://moltbook.com) agent registry |

@@ -11,4 +11,4 @@ No CVEs involved for cedarling-python package.
 
 ## Breaking change risk assessment
 
-**Risk: none.** This is a new example nothing else dependences on it.
+**Risk: none.** This is a new example nothing else depends on it.

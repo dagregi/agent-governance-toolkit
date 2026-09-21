@@ -64,7 +64,9 @@ class CedarlingConfig:
     - context: the snapshot minus ``envelope`` and any snapshot key that
       begins a configured ``token_paths`` entry, with a ``tool_call`` binding
       projected as ``{name, id?}`` (its ``args`` are already the policy target
-      value), plus each annotation keyed as ``annotations.<name>``
+      value) and ``tool_result`` excluded (its value is already the policy
+      target value and a closed-record schema cannot type an arbitrary
+      result), plus each annotation keyed as ``annotations.<name>``
     """
 
     auth_type: AuthType = "unsigned"
@@ -266,7 +268,7 @@ class CedarlingPolicyDispatcher:
     def _context(
         self, snapshot: Mapping[str, Any], annotations: Mapping[str, Any]
     ) -> dict[str, Any]:
-        reserved: set[str] = {"envelope"}
+        reserved: set[str] = {"envelope", "tool_result"}
         reserved.update(p[0] for p in self._config.token_paths if p)
         ctx = {k: v for k, v in snapshot.items() if k not in reserved}
         tool_call = ctx.get("tool_call")
