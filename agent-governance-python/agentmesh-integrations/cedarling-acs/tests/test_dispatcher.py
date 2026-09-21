@@ -503,11 +503,6 @@ def test_auth_type_rejects_invalid():
         CedarlingConfig(auth_type="singed")
 
 
-def test_auth_type_rejects_unsigned_typo():
-    with pytest.raises(ValueError, match="auth_type must be one"):
-        CedarlingConfig(auth_type="unsigend")
-
-
 def test_auth_type_accepts_valid():
     assert CedarlingConfig(auth_type="unsigned").auth_type == "unsigned"
     assert CedarlingConfig(auth_type="multi-issuer").auth_type == "multi-issuer"

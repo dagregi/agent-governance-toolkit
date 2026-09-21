@@ -1,4 +1,4 @@
-agent_control_specification_version: 1.4.0-alpha.1
+agent_control_specification_version: 0.4.0-alpha.1
 metadata:
   name: cedarling_governed
 extends: []
@@ -19,6 +19,9 @@ intervention_points:
     policy_target: $.tool_call.args
     policy_target_kind: tool_args
     tool_name_from: $.tool_call.name
+    policy:
+      id: cedarling
+  post_tool_call:
     policy:
       id: cedarling
 

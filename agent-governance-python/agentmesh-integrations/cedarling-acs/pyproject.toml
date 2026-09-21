@@ -26,7 +26,7 @@ dependencies = []
 
 [project.optional-dependencies]
 cedarling = ["cedarling-python>=2.3,<3.0"]
-dev = ["pytest>=8.0", "pytest-asyncio>=0.23,<2.0"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23,<2.0", "cedarling-python>=2.3,<3.0"]
 
 [project.urls]
 Homepage = "https://github.com/microsoft/agent-governance-toolkit"

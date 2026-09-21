@@ -28,6 +28,12 @@ namespace AGT {
 	action "post_tool_call" appliesTo {
 	  principal: [Agent],
 	  resource: [Tool],
-	  context: {}
+	  context: {
+	    tool_call?: {
+	      name: String,
+	      args?: {},
+	      id?: String
+	    }
+	  }
 	};
 }

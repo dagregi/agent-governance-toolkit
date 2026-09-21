@@ -82,3 +82,4 @@ async def test_admin_run_tool_with_args_allows(dispatcher):
         snapshot={"envelope": {"agent": {"id": "agent-admin", "attributes": {"role": "admin"}}}},
     )
     assert result.pre_tool_call_result.verdict.decision is Decision.ALLOW
+    assert result.post_tool_call_result.verdict.decision is Decision.ALLOW
