@@ -12,7 +12,7 @@
 [![CI](https://github.com/microsoft/agent-governance-toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/microsoft/agent-governance-toolkit/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://python.org)
-[![PyPI](https://img.shields.io/badge/PyPI-multiple%20packages-lightgrey)](https://github.com/microsoft/agent-governance-toolkit/tree/main/agentmesh-integrations)
+[![PyPI](https://img.shields.io/badge/PyPI-multiple%20packages-lightgrey)](https://github.com/microsoft/agent-governance-toolkit/tree/main/agent-governance-python/agentmesh-integrations)
 
 > ⭐ **If this project helps you, please star it!** It helps others discover AgentMesh integrations.
 
@@ -34,7 +34,7 @@ AgentMesh core is a lean, zero-external-dependency library. Platform integration
 - **Release independently** — A Dify plugin update shouldn't require a core release
 - **Accept community contributions** — Lower barrier than modifying core
 
-> **Note:** Framework adapters that wrap agent frameworks with governance (LangChain, CrewAI, LlamaIndex) live inside [Agent OS](https://github.com/microsoft/agent-governance-toolkit/tree/main/src/agent_os/integrations) because they are tightly coupled to the kernel. This repo contains platform-specific *plugins* and external *trust providers*.
+> **Note:** Framework adapters that wrap agent frameworks with governance (LangChain, CrewAI, LlamaIndex) live inside [Agent OS](https://github.com/microsoft/agent-governance-toolkit/tree/main/agent-governance-python/agent-os/src/agent_os/integrations) because they are tightly coupled to the kernel. This repo contains platform-specific *plugins* and external *trust providers*.
 
 ## Available Integrations
 

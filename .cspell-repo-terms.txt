@@ -87,6 +87,7 @@ Caldicott
 Cdecl
 Centralised
 Chatflows
+cjar
 Clendenen
 CommonMark
 Convs
@@ -153,6 +154,7 @@ IPFS
 Initialise
 Jaccard
 Janssen
+jans
 Kigali
 KillSwitch
 Kogi
