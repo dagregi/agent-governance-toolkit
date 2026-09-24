@@ -167,7 +167,9 @@ The dispatcher receives the ACS final policy input under `invocation["input"]`
 | `intervention_point` | `action` (`AGT::Action::"pre_tool_call"`) |
 | `tool.name` | `resource` id (`AGT::Tool`) at tool points |
 | `policy_target.kind` | `resource` id (`AGT::PolicyTarget`) at non-tool points |
-| `snapshot` minus `envelope`, plus each annotation; `tool_call` projects as `{name, id?}` (its `args` are already the policy target) and `tool_result` is excluded (its value is already the policy target) | Cedar `context` |
+| `snapshot` minus `envelope` and token keys, plus each annotation; `tool_call` projects as `{name, id?}` and `tool_result` is excluded | Cedar `context` |
+
+> Scope limit: the tool call's arguments and any tool result are visible to ACS's own `policy_target` routing but are not currently forwarded to Cedar. Policies here can only condition on principal, action, tool/resource identity, and annotations, not on argument or result content.
 
 The `AGT::` prefix comes from `CedarlingConfig(namespace="AGT")`, matching the
 namespace in each store's `schema.cedarschema`.

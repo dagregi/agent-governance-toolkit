@@ -63,10 +63,12 @@ class CedarlingConfig:
       ``PolicyTarget::"<policy_target.kind>"``
     - context: the snapshot minus ``envelope`` and any snapshot key that
       begins a configured ``token_paths`` entry, with a ``tool_call`` binding
-      projected as ``{name, id?}`` (its ``args`` are already the policy target
-      value) and ``tool_result`` excluded (its value is already the policy
-      target value and a closed-record schema cannot type an arbitrary
-      result), plus each annotation keyed as ``annotations.<name>``
+      projected as ``{name, id?}`` and ``tool_result`` excluded, plus each
+      annotation keyed as ``annotations.<name>``. The tool call's arguments
+      and any tool result are visible to ACS's own ``policy_target`` routing
+      but are not currently forwarded to Cedar; policies here can only
+      condition on principal, action, tool/resource identity, and
+      annotations, not on argument or result content.
     """
 
     auth_type: AuthType = "unsigned"
@@ -268,14 +270,19 @@ class CedarlingPolicyDispatcher:
     def _context(
         self, snapshot: Mapping[str, Any], annotations: Mapping[str, Any]
     ) -> dict[str, Any]:
+        # `tool_result` is excluded: a closed-record schema cannot type an
+        # arbitrary result (declaring `tool_result?: {}` still denies with
+        # "record attribute ok should not exist"). Tool arguments and results
+        # route via ACS `policy_target` but are not forwarded to Cedar, so
+        # Cedar policies here see only principal, action, tool/resource
+        # identity, and annotations.
         reserved: set[str] = {"envelope", "tool_result"}
         reserved.update(p[0] for p in self._config.token_paths if p)
         ctx = {k: v for k, v in snapshot.items() if k not in reserved}
         tool_call = ctx.get("tool_call")
         if isinstance(tool_call, Mapping):
-            # Project only {name, id?}: the tool arguments are already the
-            # policy_target value, and passing them through untyped would fail
-            # closed against closed-record `args` declarations in Cedar schemas.
+            # Project only {name, id?} so arbitrary `args` shapes fail neither
+            # open nor closed-record Cedar schemas.
             ctx["tool_call"] = {
                 key: tool_call[key] for key in ("name", "id") if key in tool_call
             }

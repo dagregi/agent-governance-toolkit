@@ -536,3 +536,74 @@ def test_is_allowed_must_return_real_bool():
 def test_token_paths_default_is_envelope_only():
     cfg = CedarlingConfig()
     assert cfg.token_paths == (("envelope", "agent", "tokens"),)
+
+
+def _canonical_cedar_request(request: Any) -> str:
+    return json.dumps(
+        {"action": request.action, "context": request.context},
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    )
+
+
+def test_tool_args_and_results_are_not_visible_to_cedar():
+    captured: list[Any] = []
+
+    def _capture(request: Any) -> Any:
+        captured.append(request)
+        return _stub_result(True)
+
+    engine = SimpleNamespace(authorize_unsigned=_capture)
+    dispatcher = CedarlingPolicyDispatcher(
+        engine, config=CedarlingConfig(namespace="AGT", auth_type="unsigned")
+    )
+
+    def _pre_pi_with_args(args: dict) -> dict:
+        pi = _tool_pi(role="admin", tool="search")
+        pi["snapshot"]["tool_call"] = {"name": "search", "args": args, "id": "call-1"}
+        pi["policy_target"] = {
+            "kind": "tool_args",
+            "path": "$.tool_call.args",
+            "value": args,
+        }
+        return pi
+
+    dispatcher.evaluate(_inv(_pre_pi_with_args({"q": "benign"})))
+    dispatcher.evaluate(_inv(_pre_pi_with_args({"q": "MUST_BLOCK", "secret": "MUST_BLOCK"})))
+    assert len(captured) == 2
+    benign_args, secret_args = (
+        _canonical_cedar_request(captured[0]),
+        _canonical_cedar_request(captured[1]),
+    )
+    assert benign_args == secret_args
+    assert "MUST_BLOCK" not in benign_args
+
+    captured.clear()
+
+    def _post_pi_with_result(result: dict) -> dict:
+        return {
+            "intervention_point": "post_tool_call",
+            "policy_target": {
+                "kind": "tool_result",
+                "path": "$.tool_result",
+                "value": result,
+            },
+            "snapshot": {
+                "envelope": {"agent": {"id": "agent-1", "attributes": {"role": "admin"}}},
+                "tool_call": {"name": "search", "args": {}, "id": "call-1"},
+                "tool_result": result,
+            },
+            "annotations": {},
+            "tool": {"name": "search", "clearance": "public"},
+        }
+
+    dispatcher.evaluate(_inv(_post_pi_with_result({"text": "benign"})))
+    dispatcher.evaluate(_inv(_post_pi_with_result({"text": "benign", "secret": "MUST_BLOCK"})))
+    assert len(captured) == 2
+    benign_result, secret_result = (
+        _canonical_cedar_request(captured[0]),
+        _canonical_cedar_request(captured[1]),
+    )
+    assert benign_result == secret_result
+    assert "MUST_BLOCK" not in benign_result
